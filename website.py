@@ -1,8 +1,8 @@
-import ConfigParser
+import configparser
 import string
 import sqlite3
 import cherrypy
-import urllib2
+import urllib3
 import os
 
 class AdoptSite(object):
@@ -86,11 +86,9 @@ class AdoptSite(object):
     def add_project(self, project):
         """Add the project to the queue.list."""
 
-        print "FOOOO"
-
         # Warning: no error checking
         f = open("current-adopt-add.tmp", 'wb')
-        url = urllib2.urlopen(project)
+        url = urllib3.urlopen(project)
         f.write(url.read())
         f.close()
 

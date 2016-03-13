@@ -3,6 +3,8 @@ import sqlite3
 import os
 import urllib
 import sys
+import re
+import github
 
 class Adopt():
     def __init__(self, argv):
@@ -51,8 +53,14 @@ class Adopt():
                     url = urllib.request.urlopen(l)
                     f.write(url.read())
                     f.close()
-                    if self.process_file("current-adopt.tmp") == False:
-                        lines_to_rem.append(l)
+
+                    u = urllib.parse.urlparse(l)
+                    path = u.path.split("/")
+                    if path[-1] == "ADOPTME.md":
+                        self.process_github("current-adopt.tmp", path[-4],path[-3])
+                    else:
+                        if self.process_file("current-adopt.tmp") == False:
+                            lines_to_rem.append(l)
 
                 self.fileid = self.fileid + 1
 
@@ -117,22 +125,53 @@ class Adopt():
             contact = config.get('Contact', 'name')
             email = config.get('Contact', 'email')
 
-            query = "INSERT INTO projects(ID, NAME, DESCRIPTION, CATEGORY, REPO, DISCUSSION, LANGUAGES, CONTACT, EMAIL) VALUES(" \
-                + str(self.fileid) + ", " \
-                + "'" + name +  "', " \
-                + "'" + description +  "', " \
-                + "'" + category +  "', " \
-                + "'" + repo +  "', " \
-                + "'" + discussion +  "', " \
-                + "'" + languages +  "', " \
-                + "'" + contact +  "', " \
-                + "'" + email + "')"
-            self.db.execute(query)
-            self.db.commit()
+            self.insert_project(name, description, category, repo, discussion, languages, contact, email)
 
             return True
         else:
             return False
+
+    def process_github(self, f, user, project):
+        """Process an ADOPTME.md file on GitHub"""
+
+        for line in open(f, "r").readlines():
+            match = re.search("Category:(.*)", line)
+            if match:
+                category = match.groups()[0].strip()
+
+            match = re.search("Contact:(.*)<(.*)>", line)
+            if match:
+                contact = match.groups()[0].strip()
+                email = match.groups()[1].strip()
+
+        g = github.Github()
+
+        repository = g.get_repo(user + "/" + project)
+
+        name = repository.name
+        description = repository.description
+
+        github_base_url = "https://github.com/" + user + "/" + project
+
+        repo = github_base_url
+        discussion = github_base_url + "/issues"
+        languages = repository.language
+
+        self.insert_project(name, description, category, repo, discussion, languages, contact, email)
+
+    def insert_project(self, name, description, category, repo, discussion, languages, contact, email):
+        query = "INSERT INTO projects(ID, NAME, DESCRIPTION, CATEGORY, REPO, DISCUSSION, LANGUAGES, CONTACT, EMAIL) VALUES(" \
+            + str(self.fileid) + ", " \
+            + "'" + name +  "', " \
+            + "'" + description +  "', " \
+            + "'" + category +  "', " \
+            + "'" + repo +  "', " \
+            + "'" + discussion +  "', " \
+            + "'" + languages +  "', " \
+            + "'" + contact +  "', " \
+            + "'" + email + "')"
+        self.db.execute(query)
+        self.db.commit()
 
 if __name__ == '__main__':
     a = Adopt(sys.argv)

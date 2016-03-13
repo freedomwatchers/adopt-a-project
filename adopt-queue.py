@@ -1,7 +1,7 @@
-import ConfigParser
+import configparser
 import sqlite3
 import os
-import urllib2
+import urllib
 import sys
 
 class Adopt():
@@ -9,7 +9,7 @@ class Adopt():
 
         self.examplemode = False
 
-        print "Starting up."
+        print("Starting up.")
 
         self.args = sys.argv
 
@@ -26,28 +26,29 @@ class Adopt():
             self.queuefile = open("exampleadopts/local-queue", 'r')
         else:
             if os.path.isfile("queue.list"):
-                print "existing file"
+                print("existing file")
                 self.queuefile = open("queue.list", 'r')
                 queuelines = self.queuefile.readlines()
 
         self.fileid = 1
 
         if os.path.getsize("queue.list") == 0:
-            print "No projects in the queue to process."
+            print("No projects in the queue to process.")
         else:
-            print "Processing .adopt files..."
+            print("Processing .adopt files...")
 
             # Let's gather the lines of .adopts that will need to be removed
             lines_to_rem = []
 
             for l in queuelines:
-                print "\t * " + str(l)
+                l = l.rstrip()
+                print("\t * " + str(l))
 
                 if self.examplemode == True:
                     self.process_file("./exampleadopts/" + l)
                 else:
                     f = open("current-adopt.tmp", 'wb')
-                    url = urllib2.urlopen(l)
+                    url = urllib.request.urlopen(l)
                     f.write(url.read())
                     f.close()
                     if self.process_file("current-adopt.tmp") == False:
@@ -55,20 +56,20 @@ class Adopt():
 
                 self.fileid = self.fileid + 1
 
-            print "...done."
+            print("...done.")
 
             # Now let's remove .adopts not required
             # This happens when the status has changed from 'no' to 'yes'
 
             f = open("queue.list","w")
 
-            print "Removing .adopts that are now maintained:"
+            print("Removing .adopts that are now maintained:")
 
             for line in queuelines:
                 match = False
                 for i in lines_to_rem:
                     if line == i:
-                        print "\t * " + str(line)
+                        print("\t * " + str(line))
                         match = True
 
                 if match == False:
@@ -76,14 +77,14 @@ class Adopt():
 
             f.close()
 
-            print "...done."
+            print("...done.")
 
         self.queuefile.close()
 
     def setup_db(self):
         """Remove a pre-existing database and create a new database and schema."""
 
-        print "Setting up the database..."
+        print("Setting up the database...")
         self.db = sqlite3.connect("db.sql")
         self.db.execute("CREATE TABLE projects (ID INT PRIMARY KEY NOT NULL, \
             NAME TEXT NOT NULL, \
@@ -96,12 +97,12 @@ class Adopt():
             EMAIL TEXT NOT NULL \
             )")
 
-        print "...done."
+        print("...done.")
 
     def process_file(self, f):
         """Process an individual .adopt file and add it to the database."""
 
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.read(f.strip())
 
         status = config.get('Project', 'maintained')
